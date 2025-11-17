@@ -104,6 +104,11 @@ static void skip_whitespace(Lexer* lexer) {
         char c = peek(lexer);
         if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
             advance(lexer);
+        } else if (c == '#') {
+            /* Preprocessor directive - skip entire line */
+            while (peek(lexer) != '\n' && !is_at_end(lexer)) {
+                advance(lexer);
+            }
         } else if (c == '/') {
             if (peek_next(lexer) == '/') {
                 /* Single-line comment */

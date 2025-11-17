@@ -1,0 +1,65 @@
+Programme Description
+=====================
+
+This programme consists of 4 functions.
+
+Function: add
+-------------
+This function accepts 2 parameters and returns a value of type int.
+
+Parameters:
+  • 'a': int
+  • 'b': int
+
+The function performs the following steps:
+
+  1. Return the sum of 'a' and 'b'.
+  
+
+Function: subtract
+------------------
+This function accepts 2 parameters and returns a value of type int.
+
+Parameters:
+  • 'a': int
+  • 'b': int
+
+The function performs the following steps:
+
+  1. Return the difference between 'a' and 'b'.
+  
+
+Function: multiply
+------------------
+This function accepts 2 parameters and returns a value of type int.
+
+Parameters:
+  • 'a': int
+  • 'b': int
+
+The function performs the following steps:
+
+  1. Return the product of 'a' and 'b'.
+  
+
+Function: main
+--------------
+This function accepts no parameters and returns a value of type int.
+
+This is the main entry point of the programme.
+
+The function performs the following steps:
+
+  1. Declare a variable named 'x' of type int, initialised to the value 10.
+  
+  2. Declare a variable named 'y' of type int, initialised to the value 5.
+  
+  3. Declare a variable named 'sum' of type int, initialised to call the 'add' function with arguments 'x', 'y'.
+  
+  4. Declare a variable named 'diff' of type int, initialised to call the 'subtract' function with arguments 'x', 'y'.
+  
+  5. Declare a variable named 'prod' of type int, initialised to call the 'multiply' function with arguments 'x', 'y'.
+  
+  6. Return the value 0.
+  
+
