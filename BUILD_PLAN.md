@@ -723,8 +723,308 @@ The compiler will be considered successful when:
 - For loop counters, explain their purpose
 - Suggest better names in comments
 
+## Production-Ready Enhancements
+
+### Cross-Platform Build System
+
+#### CMake Configuration
+The project uses CMake to ensure builds work on Linux, macOS, and Windows:
+
+```cmake
+cmake_minimum_required(VERSION 3.10)
+project(c2en VERSION 1.0.0 LANGUAGES C)
+
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+
+# Platform-specific compiler flags
+if(MSVC)
+    add_compile_options(/W4 /WX)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+endif()
+
+# Source files
+file(GLOB SOURCES "src/*.c")
+list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
+
+# Main executable
+add_executable(c2en src/main.c ${SOURCES})
+
+# Install targets
+install(TARGETS c2en DESTINATION bin)
+```
+
+#### Platform-Specific Considerations
+
+**Linux**:
+- Use GNU Make or CMake
+- Standard gcc/clang compiler
+- Install via package managers (apt, yum, pacman)
+
+**macOS**:
+- Use CMake with Xcode or Makefiles
+- Clang compiler (default)
+- Homebrew formula for distribution
+- Universal binary support (Intel + Apple Silicon)
+
+**Windows**:
+- CMake with Visual Studio or MinGW
+- MSVC or GCC compiler
+- Batch scripts for building
+- MSI installer for distribution
+
+### Continuous Integration / Continuous Deployment
+
+#### GitHub Actions Workflow
+```yaml
+name: CI/CD Pipeline
+
+on: [push, pull_request]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: make
+      - name: Run Tests
+        run: make test
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: c2en-linux
+          path: c2en
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: make
+      - name: Run Tests
+        run: make test
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: c2en-macos
+          path: c2en
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build
+        run: |
+          mkdir build
+          cd build
+          cmake ..
+          cmake --build .
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: c2en-windows
+          path: build/Debug/c2en.exe
+```
+
+### Error Handling and Logging
+
+#### Error Severity Levels
+1. **INFO**: Compilation progress messages
+2. **WARNING**: Non-fatal issues (unused variables, style suggestions)
+3. **ERROR**: Fatal compilation errors (syntax, semantic errors)
+
+#### Error Message Format
+```
+[ERROR] filename.c:line:column: error message
+    relevant source code line
+    ^^^^ indicator pointing to error location
+```
+
+#### Logging System
+- Compile-time flag for debug logging
+- Log file output option (`--log-file=compiler.log`)
+- Verbosity levels (`-v`, `-vv`, `-vvv`)
+
+### Memory Management
+
+#### Best Practices
+- All allocations paired with deallocations
+- Use valgrind for leak detection on Linux/macOS
+- Use Dr. Memory on Windows
+- Smart cleanup with goto-based error handling in C
+- Arena allocators for AST nodes (batch free)
+
+#### Memory Profiling
+```bash
+# Linux/macOS
+valgrind --leak-check=full --show-leak-kinds=all ./c2en test.c
+
+# Generate profiling report
+valgrind --tool=massif ./c2en large_program.c
+ms_print massif.out.<pid>
+```
+
+### Performance Optimisation
+
+#### Compilation Flags
+```makefile
+# Development build
+CFLAGS = -Wall -Wextra -std=c99 -g -O0
+
+# Release build
+CFLAGS = -Wall -Wextra -std=c99 -O3 -DNDEBUG
+
+# Profile-guided optimisation
+CFLAGS = -Wall -Wextra -std=c99 -O3 -fprofile-generate
+# Run with test data, then:
+CFLAGS = -Wall -Wextra -std=c99 -O3 -fprofile-use
+```
+
+#### Performance Targets
+- Small programs (<100 LOC): <10ms compilation time
+- Medium programs (100-1000 LOC): <100ms
+- Large programs (1000-10000 LOC): <1s
+- Memory usage: <50MB for typical programs
+
+### Version Management
+
+#### Semantic Versioning
+- MAJOR.MINOR.PATCH (e.g., 1.0.0)
+- Version embedded in binary
+- `--version` flag displays:
+  - Version number
+  - Build date
+  - Compiler used
+  - Supported C standard
+
+#### Version Header
+```c
+#define C2EN_VERSION_MAJOR 1
+#define C2EN_VERSION_MINOR 0
+#define C2EN_VERSION_PATCH 0
+#define C2EN_VERSION_STRING "1.0.0"
+#define C2EN_BUILD_DATE __DATE__
+```
+
+### Distribution and Packaging
+
+#### Linux Distribution
+- **DEB package** (Debian/Ubuntu): `c2en_1.0.0_amd64.deb`
+- **RPM package** (Fedora/RHEL): `c2en-1.0.0.x86_64.rpm`
+- **AUR package** (Arch Linux): `c2en-git`
+- **AppImage**: Portable binary for all distributions
+
+#### macOS Distribution
+- **Homebrew Formula**:
+```ruby
+class C2en < Formula
+  desc "C to British English compiler"
+  homepage "https://github.com/DannyBimma/gb-en-compiler"
+  url "https://github.com/DannyBimma/gb-en-compiler/archive/v1.0.0.tar.gz"
+  sha256 "..."
+
+  def install
+    system "make"
+    bin.install "c2en"
+  end
+end
+```
+- **PKG installer**: For direct installation
+- **Universal binary**: Intel + Apple Silicon
+
+#### Windows Distribution
+- **MSI Installer**: Windows Installer package
+- **Portable ZIP**: No installation required
+- **Chocolatey package**: `choco install c2en`
+- **Scoop manifest**: `scoop install c2en`
+
+### Documentation Structure
+
+```
+docs/
+├── USER_GUIDE.md           # How to use the compiler
+├── DEVELOPER_GUIDE.md      # Contributing guidelines
+├── API_REFERENCE.md        # Internal API documentation
+├── ARCHITECTURE.md         # System architecture
+├── CHANGELOG.md            # Version history
+├── TROUBLESHOOTING.md      # Common issues and solutions
+└── EXAMPLES.md             # Extended examples
+```
+
+### Security Considerations
+
+#### Input Validation
+- Maximum file size limits (prevent DoS)
+- Path traversal prevention
+- Buffer overflow protection
+- Stack overflow detection (recursive functions)
+
+#### Secure Coding Practices
+- Use safe string functions (strncpy, snprintf)
+- Bounds checking on all array accesses
+- No eval or dynamic code execution
+- Sanitise all user input and file paths
+
+#### Code Scanning
+- Static analysis with cppcheck
+- Security scanning with Coverity
+- CodeQL analysis in CI/CD pipeline
+
+### Accessibility and Internationalisation
+
+#### Future Considerations
+While this version focuses on British English:
+- Template system designed for easy language addition
+- Separate translation templates from core logic
+- Unicode support (UTF-8) for international characters
+- Potential for American English variant
+- Potential for other languages (French, German, Spanish)
+
+### Metrics and Telemetry (Optional)
+
+#### Usage Metrics (Privacy-Conscious)
+- Number of successful compilations
+- Average compilation time
+- Most common error types
+- C language features used
+- All metrics anonymised and opt-in only
+
+### Release Checklist
+
+Before each release:
+- [ ] All tests passing on all platforms
+- [ ] Memory leak check clean
+- [ ] Version numbers updated
+- [ ] CHANGELOG.md updated
+- [ ] Documentation reviewed and updated
+- [ ] Example programs tested
+- [ ] Build scripts tested on all platforms
+- [ ] GitHub release created with binaries
+- [ ] Package manager formulas updated
+- [ ] Website/documentation site updated
+
+### Maintenance and Support
+
+#### Bug Reports
+- GitHub Issues for bug tracking
+- Issue templates for bug reports and feature requests
+- Response time target: 48 hours
+- Critical bug fix release: within 1 week
+
+#### Version Support
+- Latest version: Full support
+- Previous minor version: Security updates
+- Older versions: Community support only
+
+#### Deprecation Policy
+- Features deprecated with 6-month notice
+- Deprecation warnings in compiler output
+- Migration guide provided
+
 ## Conclusion
 
-This build plan provides a comprehensive roadmap for creating a C to British English compiler. By following the phased approach and maintaining focus on readability and accuracy, the project will deliver a unique tool that bridges the gap between code and natural language, making programming logic accessible to everyone.
+This build plan provides a comprehensive roadmap for creating a production-ready C to British English compiler. By following the phased approach and maintaining focus on readability, accuracy, and cross-platform support, the project will deliver a unique tool that bridges the gap between code and natural language, making programming logic accessible to everyone.
 
-The modular architecture ensures maintainability, whilst the extensive testing strategy guarantees reliability. The emphasis on proper British English and clear, formal prose will result in output that is both technically accurate and genuinely readable by non-programmers.
+The modular architecture ensures maintainability, whilst the extensive testing strategy guarantees reliability. The emphasis on proper British English and clear, formal prose will result in output that is both technically accurate and genuinely readable by non-programmers. The production enhancements ensure the compiler is robust, secure, and ready for distribution across all major operating systems.

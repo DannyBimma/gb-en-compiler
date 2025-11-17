@@ -53,3 +53,11 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Build artifacts
+build/
+c2en
+c2en.exe
+
+# Generated output files
+examples/*.txt
