@@ -32,15 +32,6 @@ static void append_line(TranslationContext* ctx, const char* text) {
     append_output(ctx, "\n");
 }
 
-static void append_formatted(TranslationContext* ctx, const char* format, ...) {
-    char buffer[4096];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
-    append_output(ctx, buffer);
-}
-
 /* Expression translation */
 
 static char* translate_binary_operator(const char* op, ASTNode* left, ASTNode* right) {
@@ -107,6 +98,12 @@ static char* translate_unary_operator(const char* op, ASTNode* operand) {
         snprintf(result, 512, "%s incremented by 1", operand_str);
     } else if (string_equals(op, "--")) {
         snprintf(result, 512, "%s decremented by 1", operand_str);
+    } else if (string_equals(op, "++post")) {
+        snprintf(result, 512, "increment %s by 1", operand_str);
+    } else if (string_equals(op, "--post")) {
+        snprintf(result, 512, "decrement %s by 1", operand_str);
+    } else if (string_equals(op, "~")) {
+        snprintf(result, 512, "the bitwise complement of %s", operand_str);
     } else if (string_equals(op, "&")) {
         snprintf(result, 512, "the address of %s", operand_str);
     } else if (string_equals(op, "*")) {
@@ -151,6 +148,110 @@ static char* translate_function_call(ASTNode* node) {
         snprintf(result, 2048, "allocate memory dynamically");
     } else if (string_equals(func_name, "free")) {
         snprintf(result, 2048, "release previously allocated memory");
+    } else if (string_equals(func_name, "strcmp")) {
+        snprintf(result, 2048, "compare two text strings");
+    } else if (string_equals(func_name, "strncmp")) {
+        snprintf(result, 2048, "compare a specified number of characters in two text strings");
+    } else if (string_equals(func_name, "strcat")) {
+        snprintf(result, 2048, "concatenate two text strings");
+    } else if (string_equals(func_name, "strncpy")) {
+        snprintf(result, 2048, "copy a specified number of characters from one text string to another");
+    } else if (string_equals(func_name, "sprintf")) {
+        snprintf(result, 2048, "format text and store it in a string");
+    } else if (string_equals(func_name, "fprintf")) {
+        snprintf(result, 2048, "write formatted output to a file");
+    } else if (string_equals(func_name, "fscanf")) {
+        snprintf(result, 2048, "read formatted input from a file");
+    } else if (string_equals(func_name, "fopen")) {
+        snprintf(result, 2048, "open a file");
+    } else if (string_equals(func_name, "fclose")) {
+        snprintf(result, 2048, "close an open file");
+    } else if (string_equals(func_name, "fread")) {
+        snprintf(result, 2048, "read data from a file");
+    } else if (string_equals(func_name, "fwrite")) {
+        snprintf(result, 2048, "write data to a file");
+    } else if (string_equals(func_name, "fgets")) {
+        snprintf(result, 2048, "read a line of text from a file");
+    } else if (string_equals(func_name, "fputs")) {
+        snprintf(result, 2048, "write a line of text to a file");
+    } else if (string_equals(func_name, "feof")) {
+        snprintf(result, 2048, "check if end of file has been reached");
+    } else if (string_equals(func_name, "fseek")) {
+        snprintf(result, 2048, "move the file position indicator");
+    } else if (string_equals(func_name, "ftell")) {
+        snprintf(result, 2048, "get the current file position");
+    } else if (string_equals(func_name, "rewind")) {
+        snprintf(result, 2048, "reset the file position to the beginning");
+    } else if (string_equals(func_name, "calloc")) {
+        snprintf(result, 2048, "allocate and initialise memory to zero");
+    } else if (string_equals(func_name, "realloc")) {
+        snprintf(result, 2048, "resize previously allocated memory");
+    } else if (string_equals(func_name, "memcpy")) {
+        snprintf(result, 2048, "copy a block of memory");
+    } else if (string_equals(func_name, "memset")) {
+        snprintf(result, 2048, "fill a block of memory with a specified value");
+    } else if (string_equals(func_name, "memcmp")) {
+        snprintf(result, 2048, "compare two blocks of memory");
+    } else if (string_equals(func_name, "atoi")) {
+        snprintf(result, 2048, "convert text to an integer");
+    } else if (string_equals(func_name, "atof")) {
+        snprintf(result, 2048, "convert text to a floating-point number");
+    } else if (string_equals(func_name, "atol")) {
+        snprintf(result, 2048, "convert text to a long integer");
+    } else if (string_equals(func_name, "itoa")) {
+        snprintf(result, 2048, "convert an integer to text");
+    } else if (string_equals(func_name, "abs")) {
+        snprintf(result, 2048, "calculate the absolute value");
+    } else if (string_equals(func_name, "sqrt")) {
+        snprintf(result, 2048, "calculate the square root");
+    } else if (string_equals(func_name, "pow")) {
+        snprintf(result, 2048, "raise a number to a power");
+    } else if (string_equals(func_name, "sin")) {
+        snprintf(result, 2048, "calculate the sine");
+    } else if (string_equals(func_name, "cos")) {
+        snprintf(result, 2048, "calculate the cosine");
+    } else if (string_equals(func_name, "tan")) {
+        snprintf(result, 2048, "calculate the tangent");
+    } else if (string_equals(func_name, "log")) {
+        snprintf(result, 2048, "calculate the natural logarithm");
+    } else if (string_equals(func_name, "exp")) {
+        snprintf(result, 2048, "calculate the exponential");
+    } else if (string_equals(func_name, "ceil")) {
+        snprintf(result, 2048, "round up to the nearest integer");
+    } else if (string_equals(func_name, "floor")) {
+        snprintf(result, 2048, "round down to the nearest integer");
+    } else if (string_equals(func_name, "rand")) {
+        snprintf(result, 2048, "generate a pseudo-random number");
+    } else if (string_equals(func_name, "srand")) {
+        snprintf(result, 2048, "seed the random number generator");
+    } else if (string_equals(func_name, "time")) {
+        snprintf(result, 2048, "get the current time");
+    } else if (string_equals(func_name, "exit")) {
+        snprintf(result, 2048, "terminate the programme");
+    } else if (string_equals(func_name, "assert")) {
+        snprintf(result, 2048, "verify a condition and abort if false");
+    } else if (string_equals(func_name, "getchar")) {
+        snprintf(result, 2048, "read a character from standard input");
+    } else if (string_equals(func_name, "putchar")) {
+        snprintf(result, 2048, "write a character to standard output");
+    } else if (string_equals(func_name, "puts")) {
+        snprintf(result, 2048, "write a string to standard output");
+    } else if (string_equals(func_name, "gets")) {
+        snprintf(result, 2048, "read a string from standard input");
+    } else if (string_equals(func_name, "isalpha")) {
+        snprintf(result, 2048, "check if a character is alphabetic");
+    } else if (string_equals(func_name, "isdigit")) {
+        snprintf(result, 2048, "check if a character is a digit");
+    } else if (string_equals(func_name, "isspace")) {
+        snprintf(result, 2048, "check if a character is whitespace");
+    } else if (string_equals(func_name, "toupper")) {
+        snprintf(result, 2048, "convert a character to uppercase");
+    } else if (string_equals(func_name, "tolower")) {
+        snprintf(result, 2048, "convert a character to lowercase");
+    } else if (string_equals(func_name, "qsort")) {
+        snprintf(result, 2048, "sort an array using quicksort");
+    } else if (string_equals(func_name, "bsearch")) {
+        snprintf(result, 2048, "search a sorted array using binary search");
     } else {
         /* Generic function call */
         if (node->data.function_call.arg_count > 0) {
