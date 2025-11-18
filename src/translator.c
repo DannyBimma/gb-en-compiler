@@ -74,6 +74,16 @@ static char* translate_binary_operator(const char* op, ASTNode* left, ASTNode* r
         snprintf(result, 1024, "both %s and %s", left_str, right_str);
     } else if (string_equals(op, "||")) {
         snprintf(result, 1024, "either %s or %s", left_str, right_str);
+    } else if (string_equals(op, "&")) {
+        snprintf(result, 1024, "the bitwise AND of %s and %s", left_str, right_str);
+    } else if (string_equals(op, "|")) {
+        snprintf(result, 1024, "the bitwise OR of %s and %s", left_str, right_str);
+    } else if (string_equals(op, "^")) {
+        snprintf(result, 1024, "the bitwise XOR of %s and %s", left_str, right_str);
+    } else if (string_equals(op, "<<")) {
+        snprintf(result, 1024, "%s left-shifted by %s bits", left_str, right_str);
+    } else if (string_equals(op, ">>")) {
+        snprintf(result, 1024, "%s right-shifted by %s bits", left_str, right_str);
     } else {
         snprintf(result, 1024, "%s %s %s", left_str, op, right_str);
     }
@@ -209,6 +219,81 @@ static char* translate_expression(ASTNode* node) {
             char* target_str = translate_expression(node->data.assignment.target);
             char* value_str = translate_expression(node->data.assignment.value);
             snprintf(result, 1024, "set %s to %s", target_str, value_str);
+            free(target_str);
+            free(value_str);
+            break;
+        }
+
+        case NODE_MEMBER_ACCESS: {
+            char* obj_str = translate_expression(node->data.member_access.object);
+            if (node->data.member_access.is_arrow) {
+                snprintf(result, 1024, "the '%s' member of the structure pointed to by %s",
+                        node->data.member_access.member, obj_str);
+            } else {
+                snprintf(result, 1024, "the '%s' member of %s",
+                        node->data.member_access.member, obj_str);
+            }
+            free(obj_str);
+            break;
+        }
+
+        case NODE_TERNARY: {
+            char* cond_str = translate_expression(node->data.ternary.condition);
+            char* then_str = translate_expression(node->data.ternary.then_expr);
+            char* else_str = translate_expression(node->data.ternary.else_expr);
+            snprintf(result, 1024, "if %s then %s, otherwise %s", cond_str, then_str, else_str);
+            free(cond_str);
+            free(then_str);
+            free(else_str);
+            break;
+        }
+
+        case NODE_SIZEOF: {
+            if (node->data.sizeof_expr.type_name) {
+                snprintf(result, 1024, "the size in bytes of type '%s'", node->data.sizeof_expr.type_name);
+            } else {
+                char* expr_str = translate_expression(node->data.sizeof_expr.expression);
+                snprintf(result, 1024, "the size in bytes of %s", expr_str);
+                free(expr_str);
+            }
+            break;
+        }
+
+        case NODE_CAST: {
+            char* expr_str = translate_expression(node->data.cast.expression);
+            snprintf(result, 1024, "%s converted to type '%s'", expr_str, node->data.cast.target_type);
+            free(expr_str);
+            break;
+        }
+
+        case NODE_COMPOUND_ASSIGN: {
+            char* target_str = translate_expression(node->data.compound_assign.target);
+            char* value_str = translate_expression(node->data.compound_assign.value);
+            const char* op = node->data.compound_assign.operator;
+
+            if (string_equals(op, "+=")) {
+                snprintf(result, 1024, "increase %s by %s", target_str, value_str);
+            } else if (string_equals(op, "-=")) {
+                snprintf(result, 1024, "decrease %s by %s", target_str, value_str);
+            } else if (string_equals(op, "*=")) {
+                snprintf(result, 1024, "multiply %s by %s", target_str, value_str);
+            } else if (string_equals(op, "/=")) {
+                snprintf(result, 1024, "divide %s by %s", target_str, value_str);
+            } else if (string_equals(op, "%=")) {
+                snprintf(result, 1024, "set %s to the remainder when divided by %s", target_str, value_str);
+            } else if (string_equals(op, "&=")) {
+                snprintf(result, 1024, "bitwise AND %s with %s", target_str, value_str);
+            } else if (string_equals(op, "|=")) {
+                snprintf(result, 1024, "bitwise OR %s with %s", target_str, value_str);
+            } else if (string_equals(op, "^=")) {
+                snprintf(result, 1024, "bitwise XOR %s with %s", target_str, value_str);
+            } else if (string_equals(op, "<<=")) {
+                snprintf(result, 1024, "left-shift %s by %s bits", target_str, value_str);
+            } else if (string_equals(op, ">>=")) {
+                snprintf(result, 1024, "right-shift %s by %s bits", target_str, value_str);
+            } else {
+                snprintf(result, 1024, "apply %s to %s with %s", op, target_str, value_str);
+            }
             free(target_str);
             free(value_str);
             break;
@@ -363,6 +448,77 @@ static void translate_statement(TranslationContext* ctx, ASTNode* node, int step
             append_line(ctx, "Skip to the next iteration of the loop.");
             append_line(ctx, "");
             break;
+
+        case NODE_DO_WHILE: {
+            char line[1024];
+            snprintf(line, sizeof(line), "%sRepeatedly perform the following:", step_prefix);
+            append_line(ctx, line);
+
+            ctx->indent_level++;
+            if (node->data.while_stmt.body->type == NODE_BLOCK) {
+                for (int i = 0; i < node->data.while_stmt.body->data.block.statement_count; i++) {
+                    translate_statement(ctx, node->data.while_stmt.body->data.block.statements[i], 0);
+                }
+            } else {
+                translate_statement(ctx, node->data.while_stmt.body, 0);
+            }
+            ctx->indent_level--;
+
+            char* cond_str = translate_expression(node->data.while_stmt.condition);
+            snprintf(line, sizeof(line), "Continue whilst the condition \"%s\" remains true.", cond_str);
+            append_line(ctx, line);
+            free(cond_str);
+            append_line(ctx, "");
+            break;
+        }
+
+        case NODE_SWITCH: {
+            char* expr_str = translate_expression(node->data.switch_stmt.expression);
+            char line[1024];
+            snprintf(line, sizeof(line), "%sDepending on the value of %s:", step_prefix, expr_str);
+            append_line(ctx, line);
+            free(expr_str);
+
+            ctx->indent_level++;
+            for (int i = 0; i < node->data.switch_stmt.case_count; i++) {
+                ASTNode* case_node = node->data.switch_stmt.cases[i];
+                if (case_node->type == NODE_CASE) {
+                    char* value_str = translate_expression(case_node->data.case_stmt.value);
+                    snprintf(line, sizeof(line), "When it equals %s:", value_str);
+                    append_line(ctx, line);
+                    free(value_str);
+                } else {
+                    append_line(ctx, "Otherwise (default):");
+                }
+
+                ctx->indent_level++;
+                for (int j = 0; j < case_node->data.case_stmt.statement_count; j++) {
+                    translate_statement(ctx, case_node->data.case_stmt.statements[j], 0);
+                }
+                ctx->indent_level--;
+            }
+            ctx->indent_level--;
+            append_line(ctx, "");
+            break;
+        }
+
+        case NODE_GOTO: {
+            char line[1024];
+            snprintf(line, sizeof(line), "%sJump to label '%s'.", step_prefix, node->data.goto_stmt.label);
+            append_line(ctx, line);
+            append_line(ctx, "");
+            break;
+        }
+
+        case NODE_LABEL: {
+            char line[1024];
+            snprintf(line, sizeof(line), "Label '%s':", node->data.label_stmt.name);
+            append_line(ctx, line);
+            if (node->data.label_stmt.statement) {
+                translate_statement(ctx, node->data.label_stmt.statement, 0);
+            }
+            break;
+        }
 
         case NODE_BLOCK:
             for (int i = 0; i < node->data.block.statement_count; i++) {

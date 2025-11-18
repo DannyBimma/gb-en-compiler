@@ -5,13 +5,19 @@ static ASTNode* parse_function(Parser* parser);
 static ASTNode* parse_statement(Parser* parser);
 static ASTNode* parse_expression(Parser* parser);
 static ASTNode* parse_assignment(Parser* parser);
+static ASTNode* parse_ternary(Parser* parser);
 static ASTNode* parse_logical_or(Parser* parser);
 static ASTNode* parse_logical_and(Parser* parser);
+static ASTNode* parse_bitwise_or(Parser* parser);
+static ASTNode* parse_bitwise_xor(Parser* parser);
+static ASTNode* parse_bitwise_and(Parser* parser);
 static ASTNode* parse_equality(Parser* parser);
 static ASTNode* parse_comparison(Parser* parser);
+static ASTNode* parse_shift(Parser* parser);
 static ASTNode* parse_term(Parser* parser);
 static ASTNode* parse_factor(Parser* parser);
 static ASTNode* parse_unary(Parser* parser);
+static ASTNode* parse_postfix(Parser* parser);
 static ASTNode* parse_primary(Parser* parser);
 
 /* Parser creation */
@@ -100,7 +106,20 @@ static Token* consume(Parser* parser, TokenType type, const char* message) {
 static int is_type(TokenType type) {
     return type == TOKEN_INT || type == TOKEN_CHAR ||
            type == TOKEN_FLOAT || type == TOKEN_DOUBLE ||
-           type == TOKEN_VOID;
+           type == TOKEN_VOID || type == TOKEN_SIGNED ||
+           type == TOKEN_UNSIGNED || type == TOKEN_LONG ||
+           type == TOKEN_SHORT || type == TOKEN_STRUCT ||
+           type == TOKEN_UNION || type == TOKEN_ENUM ||
+           type == TOKEN_CONST;
+}
+
+/* Check if compound assignment operator */
+static int is_compound_assign(TokenType type) {
+    return type == TOKEN_PLUS_ASSIGN || type == TOKEN_MINUS_ASSIGN ||
+           type == TOKEN_STAR_ASSIGN || type == TOKEN_SLASH_ASSIGN ||
+           type == TOKEN_PERCENT_ASSIGN || type == TOKEN_AND_ASSIGN ||
+           type == TOKEN_OR_ASSIGN || type == TOKEN_XOR_ASSIGN ||
+           type == TOKEN_SHL_ASSIGN || type == TOKEN_SHR_ASSIGN;
 }
 
 /* Parse primary expressions */
@@ -121,6 +140,30 @@ static ASTNode* parse_primary(Parser* parser) {
     if (match(parser, TOKEN_CHAR_LITERAL)) {
         Token* token = previous(parser);
         return ast_create_literal(token->lexeme, "char");
+    }
+
+    /* sizeof expression */
+    if (match(parser, TOKEN_SIZEOF)) {
+        consume(parser, TOKEN_LPAREN, "Expected '(' after 'sizeof'");
+
+        /* Check if it's a type or expression */
+        if (is_type(peek(parser)->type)) {
+            Token* type_token = advance(parser);
+            char type_str[128];
+            strcpy(type_str, type_token->lexeme);
+
+            /* Handle pointer types */
+            while (match(parser, TOKEN_STAR)) {
+                strcat(type_str, "*");
+            }
+
+            consume(parser, TOKEN_RPAREN, "Expected ')' after type");
+            return ast_create_sizeof_type(type_str);
+        } else {
+            ASTNode* expr = parse_expression(parser);
+            consume(parser, TOKEN_RPAREN, "Expected ')' after expression");
+            return ast_create_sizeof_expr(expr);
+        }
     }
 
     /* Identifier or function call */
@@ -172,16 +215,61 @@ static ASTNode* parse_primary(Parser* parser) {
     return NULL;
 }
 
+/* Parse postfix expressions (member access, array access, function calls) */
+static ASTNode* parse_postfix(Parser* parser) {
+    ASTNode* expr = parse_primary(parser);
+
+    while (1) {
+        if (match(parser, TOKEN_DOT)) {
+            Token* member = consume(parser, TOKEN_IDENTIFIER, "Expected member name after '.'");
+            if (member) {
+                expr = ast_create_member_access(expr, member->lexeme, 0);
+            }
+        } else if (match(parser, TOKEN_ARROW)) {
+            Token* member = consume(parser, TOKEN_IDENTIFIER, "Expected member name after '->'");
+            if (member) {
+                expr = ast_create_member_access(expr, member->lexeme, 1);
+            }
+        } else if (match(parser, TOKEN_LBRACKET)) {
+            ASTNode* index = parse_expression(parser);
+            consume(parser, TOKEN_RBRACKET, "Expected ']' after index");
+            /* Convert to array access - need identifier name */
+            if (expr->type == NODE_IDENTIFIER) {
+                char* name = string_duplicate(expr->data.identifier.name);
+                ast_destroy(expr);
+                expr = ast_create_array_access(name, index);
+            } else {
+                /* For complex expressions like a[i][j] */
+                expr = ast_create_binary_op("[]", expr, index);
+            }
+        } else if (match(parser, TOKEN_INCREMENT)) {
+            expr = ast_create_unary_op("++post", expr);
+        } else if (match(parser, TOKEN_DECREMENT)) {
+            expr = ast_create_unary_op("--post", expr);
+        } else {
+            break;
+        }
+    }
+
+    return expr;
+}
+
 /* Parse unary expressions */
 static ASTNode* parse_unary(Parser* parser) {
-    if (match_multiple(parser, 6, TOKEN_NOT, TOKEN_MINUS, TOKEN_PLUS,
-                      TOKEN_INCREMENT, TOKEN_DECREMENT, TOKEN_AMPERSAND)) {
+    if (match_multiple(parser, 7, TOKEN_NOT, TOKEN_MINUS, TOKEN_PLUS,
+                      TOKEN_INCREMENT, TOKEN_DECREMENT, TOKEN_AMPERSAND, TOKEN_TILDE)) {
         Token* op = previous(parser);
         ASTNode* operand = parse_unary(parser);
         return ast_create_unary_op(op->lexeme, operand);
     }
 
-    return parse_primary(parser);
+    /* Dereference operator */
+    if (match(parser, TOKEN_STAR)) {
+        ASTNode* operand = parse_unary(parser);
+        return ast_create_unary_op("*", operand);
+    }
+
+    return parse_postfix(parser);
 }
 
 /* Parse multiplicative expressions */
@@ -210,13 +298,26 @@ static ASTNode* parse_term(Parser* parser) {
     return left;
 }
 
+/* Parse shift expressions */
+static ASTNode* parse_shift(Parser* parser) {
+    ASTNode* left = parse_term(parser);
+
+    while (match_multiple(parser, 2, TOKEN_SHL, TOKEN_SHR)) {
+        Token* op = previous(parser);
+        ASTNode* right = parse_term(parser);
+        left = ast_create_binary_op(op->lexeme, left, right);
+    }
+
+    return left;
+}
+
 /* Parse comparison expressions */
 static ASTNode* parse_comparison(Parser* parser) {
-    ASTNode* left = parse_term(parser);
+    ASTNode* left = parse_shift(parser);
 
     while (match_multiple(parser, 4, TOKEN_GT, TOKEN_GE, TOKEN_LT, TOKEN_LE)) {
         Token* op = previous(parser);
-        ASTNode* right = parse_term(parser);
+        ASTNode* right = parse_shift(parser);
         left = ast_create_binary_op(op->lexeme, left, right);
     }
 
@@ -236,13 +337,52 @@ static ASTNode* parse_equality(Parser* parser) {
     return left;
 }
 
+/* Parse bitwise AND expressions */
+static ASTNode* parse_bitwise_and(Parser* parser) {
+    ASTNode* left = parse_equality(parser);
+
+    while (match(parser, TOKEN_AMPERSAND)) {
+        Token* op = previous(parser);
+        ASTNode* right = parse_equality(parser);
+        left = ast_create_binary_op(op->lexeme, left, right);
+    }
+
+    return left;
+}
+
+/* Parse bitwise XOR expressions */
+static ASTNode* parse_bitwise_xor(Parser* parser) {
+    ASTNode* left = parse_bitwise_and(parser);
+
+    while (match(parser, TOKEN_CARET)) {
+        Token* op = previous(parser);
+        ASTNode* right = parse_bitwise_and(parser);
+        left = ast_create_binary_op(op->lexeme, left, right);
+    }
+
+    return left;
+}
+
+/* Parse bitwise OR expressions */
+static ASTNode* parse_bitwise_or(Parser* parser) {
+    ASTNode* left = parse_bitwise_xor(parser);
+
+    while (match(parser, TOKEN_PIPE)) {
+        Token* op = previous(parser);
+        ASTNode* right = parse_bitwise_xor(parser);
+        left = ast_create_binary_op(op->lexeme, left, right);
+    }
+
+    return left;
+}
+
 /* Parse logical AND expressions */
 static ASTNode* parse_logical_and(Parser* parser) {
-    ASTNode* left = parse_equality(parser);
+    ASTNode* left = parse_bitwise_or(parser);
 
     while (match(parser, TOKEN_AND)) {
         Token* op = previous(parser);
-        ASTNode* right = parse_equality(parser);
+        ASTNode* right = parse_bitwise_or(parser);
         left = ast_create_binary_op(op->lexeme, left, right);
     }
 
@@ -262,13 +402,34 @@ static ASTNode* parse_logical_or(Parser* parser) {
     return left;
 }
 
+/* Parse ternary conditional expressions */
+static ASTNode* parse_ternary(Parser* parser) {
+    ASTNode* condition = parse_logical_or(parser);
+
+    if (match(parser, TOKEN_QUESTION)) {
+        ASTNode* then_expr = parse_expression(parser);
+        consume(parser, TOKEN_COLON, "Expected ':' in ternary expression");
+        ASTNode* else_expr = parse_ternary(parser);
+        return ast_create_ternary(condition, then_expr, else_expr);
+    }
+
+    return condition;
+}
+
 /* Parse assignment expressions */
 static ASTNode* parse_assignment(Parser* parser) {
-    ASTNode* expr = parse_logical_or(parser);
+    ASTNode* expr = parse_ternary(parser);
 
     if (match(parser, TOKEN_ASSIGN)) {
         ASTNode* value = parse_assignment(parser);
         return ast_create_assignment(expr, value);
+    }
+
+    /* Check for compound assignment */
+    if (is_compound_assign(peek(parser)->type)) {
+        Token* op = advance(parser);
+        ASTNode* value = parse_assignment(parser);
+        return ast_create_compound_assign(op->lexeme, expr, value);
     }
 
     return expr;
@@ -426,6 +587,84 @@ static ASTNode* parse_statement(Parser* parser) {
     if (match(parser, TOKEN_CONTINUE)) {
         consume(parser, TOKEN_SEMICOLON, "Expected ';' after continue");
         return ast_create_continue();
+    }
+
+    /* Do-while statement */
+    if (match(parser, TOKEN_DO)) {
+        ASTNode* body;
+        if (match(parser, TOKEN_LBRACE)) {
+            body = parse_block(parser);
+        } else {
+            body = parse_statement(parser);
+        }
+
+        consume(parser, TOKEN_WHILE, "Expected 'while' after do block");
+        consume(parser, TOKEN_LPAREN, "Expected '(' after 'while'");
+        ASTNode* condition = parse_expression(parser);
+        consume(parser, TOKEN_RPAREN, "Expected ')' after condition");
+        consume(parser, TOKEN_SEMICOLON, "Expected ';' after do-while");
+
+        return ast_create_do_while(body, condition);
+    }
+
+    /* Switch statement */
+    if (match(parser, TOKEN_SWITCH)) {
+        consume(parser, TOKEN_LPAREN, "Expected '(' after 'switch'");
+        ASTNode* expression = parse_expression(parser);
+        consume(parser, TOKEN_RPAREN, "Expected ')' after switch expression");
+        consume(parser, TOKEN_LBRACE, "Expected '{' before switch body");
+
+        ASTNode* switch_stmt = ast_create_switch(expression);
+        ASTNode* current_case = NULL;
+
+        while (!check(parser, TOKEN_RBRACE) && !is_at_end(parser)) {
+            if (match(parser, TOKEN_CASE)) {
+                ASTNode* value = parse_expression(parser);
+                consume(parser, TOKEN_COLON, "Expected ':' after case value");
+                current_case = ast_create_case(value);
+                ast_add_case(switch_stmt, current_case);
+            } else if (match(parser, TOKEN_DEFAULT)) {
+                consume(parser, TOKEN_COLON, "Expected ':' after 'default'");
+                current_case = ast_create_default();
+                ast_add_case(switch_stmt, current_case);
+            } else if (current_case) {
+                ASTNode* stmt = parse_statement(parser);
+                if (stmt) {
+                    ast_add_case_statement(current_case, stmt);
+                }
+            } else {
+                error_at(parser, peek(parser), "Statement outside of case in switch");
+                advance(parser);
+            }
+        }
+
+        consume(parser, TOKEN_RBRACE, "Expected '}' after switch body");
+        return switch_stmt;
+    }
+
+    /* Goto statement */
+    if (match(parser, TOKEN_GOTO)) {
+        Token* label = consume(parser, TOKEN_IDENTIFIER, "Expected label name after 'goto'");
+        consume(parser, TOKEN_SEMICOLON, "Expected ';' after goto");
+        if (label) {
+            return ast_create_goto(label->lexeme);
+        }
+        return NULL;
+    }
+
+    /* Label statement - identifier followed by colon */
+    if (check(parser, TOKEN_IDENTIFIER)) {
+        /* Look ahead for colon */
+        int saved = parser->current;
+        advance(parser);
+        if (check(parser, TOKEN_COLON)) {
+            parser->current = saved;
+            Token* label = advance(parser);
+            advance(parser); /* consume colon */
+            ASTNode* stmt = parse_statement(parser);
+            return ast_create_label(label->lexeme, stmt);
+        }
+        parser->current = saved;
     }
 
     /* Block statement */
