@@ -188,33 +188,44 @@ c2en input.c -o output.txt
 ## Supported C Language Features
 
 ### Data Types
-- `int`, `char`, `float`, `double`, `void`
-- Arrays (single-dimensional)
+- **Basic types**: `int`, `char`, `float`, `double`, `void`
+- **Type modifiers**: `signed`, `unsigned`, `long`, `short`, `const`
+- **Arrays**: Single-dimensional arrays with indexing
+- **Pointers**: Pointer declarations and dereferencing
 
 ### Control Flow
 - `if`, `else if`, `else` statements
 - `while` loops
 - `for` loops
-- `do-while` loops (partial)
+- `do-while` loops
+- `switch`/`case`/`default` statements
 - `break` and `continue`
+- `goto` and labels
 
-### Operations
-- Arithmetic: `+`, `-`, `*`, `/`, `%`
-- Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
-- Logical: `&&`, `||`, `!`
-- Assignment: `=`
-- Increment/Decrement: `++`, `--`
+### Operators
+- **Arithmetic**: `+`, `-`, `*`, `/`, `%`
+- **Comparison**: `==`, `!=`, `<`, `>`, `<=`, `>=`
+- **Logical**: `&&`, `||`, `!`
+- **Bitwise**: `&`, `|`, `^`, `~`, `<<`, `>>`
+- **Assignment**: `=`
+- **Compound Assignment**: `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`
+- **Increment/Decrement**: `++`, `--` (prefix and postfix)
+- **Ternary**: `? :`
+- **Member Access**: `.`, `->`
+- **Address/Dereference**: `&`, `*`
+- **Sizeof**: `sizeof()`
 
 ### Functions
 - Function declarations and definitions
 - Parameters and return values
-- Function calls
+- Function calls with arguments
 - Recursion
+- 60+ standard library functions recognised (printf, scanf, malloc, free, strlen, strcmp, fopen, fclose, sqrt, sin, cos, and many more)
 
 ### Other Features
 - Variables and constants
-- Expressions (with proper precedence)
-- Comments (single-line and multi-line)
+- Expressions (with full operator precedence)
+- Comments (single-line `//` and multi-line `/* */`)
 - Preprocessor directives (ignored during translation)
 
 ## Project Structure
@@ -359,20 +370,23 @@ The modular architecture makes it easy to extend:
 
 - Focuses on C89/99 subset (no C11/C17 features yet)
 - Preprocessor macros are ignored (not expanded)
-- Pointers have basic support
-- Structs and unions have limited support
+- Struct and union definitions are parsed but not fully translated
 - No support for multi-file programs (yet)
+- Typedef not fully implemented
+- Enums not fully implemented
 
 ## Contributing
 
 Contributions are welcome! Areas for improvement:
 
 - Extended C language support (C11, C17)
-- Enhanced pointer descriptions
-- Struct and union translations
+- Complete struct and union translations
+- Typedef and enum full implementation
 - Multi-file program support
+- Preprocessor macro expansion
 - Optimization suggestions in output
 - Additional language targets (American English, other languages)
+- Test suite development
 
 ## License
 
@@ -391,6 +405,28 @@ For questions, issues, or contributions, please visit:
 - **Issues**: https://github.com/DannyBimma/gb-en-compiler/issues
 
 ## Version History
+
+### Version 1.1.0 (2025)
+- **Major language feature additions:**
+  - Switch/case/default statements with full translation
+  - Ternary conditional operator (`?:`)
+  - Do-while loops
+  - Compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`, `^=`, `<<=`, `>>=`)
+  - Bitwise operators (`&`, `|`, `^`, `~`, `<<`, `>>`) with proper precedence
+  - Goto and label statements
+  - Sizeof expressions
+  - Member access operators (`.` and `->`)
+  - Pointer dereferencing with natural language descriptions
+  - Type modifiers (`signed`, `unsigned`, `long`, `short`, `const`)
+- **Enhanced translations:**
+  - 60+ standard library functions with British English descriptions
+  - Improved compound assignment descriptions ("increase by" vs "set to sum")
+  - Better postfix increment/decrement handling
+  - Bitwise complement translations
+- **Code quality:**
+  - Fixed compiler warnings
+  - Improved code organisation
+  - New advanced example program
 
 ### Version 1.0.0 (2025)
 - Initial release

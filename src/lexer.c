@@ -27,6 +27,15 @@ static KeywordMap keywords[] = {
     {"const", TOKEN_CONST},
     {"static", TOKEN_STATIC},
     {"extern", TOKEN_EXTERN},
+    {"switch", TOKEN_SWITCH},
+    {"case", TOKEN_CASE},
+    {"default", TOKEN_DEFAULT},
+    {"enum", TOKEN_ENUM},
+    {"goto", TOKEN_GOTO},
+    {"signed", TOKEN_SIGNED},
+    {"unsigned", TOKEN_UNSIGNED},
+    {"long", TOKEN_LONG},
+    {"short", TOKEN_SHORT},
     {NULL, TOKEN_EOF}
 };
 
@@ -292,20 +301,25 @@ Token* lexer_next_token(Lexer* lexer) {
         return scan_char(lexer);
     }
 
-    /* Two-character operators */
+    /* Two-character and three-character operators */
     switch (c) {
         case '+':
             if (match(lexer, '+')) return token_create(TOKEN_INCREMENT, "++", lexer->line, start_column);
+            if (match(lexer, '=')) return token_create(TOKEN_PLUS_ASSIGN, "+=", lexer->line, start_column);
             return token_create(TOKEN_PLUS, "+", lexer->line, start_column);
         case '-':
             if (match(lexer, '-')) return token_create(TOKEN_DECREMENT, "--", lexer->line, start_column);
             if (match(lexer, '>')) return token_create(TOKEN_ARROW, "->", lexer->line, start_column);
+            if (match(lexer, '=')) return token_create(TOKEN_MINUS_ASSIGN, "-=", lexer->line, start_column);
             return token_create(TOKEN_MINUS, "-", lexer->line, start_column);
         case '*':
+            if (match(lexer, '=')) return token_create(TOKEN_STAR_ASSIGN, "*=", lexer->line, start_column);
             return token_create(TOKEN_STAR, "*", lexer->line, start_column);
         case '/':
+            if (match(lexer, '=')) return token_create(TOKEN_SLASH_ASSIGN, "/=", lexer->line, start_column);
             return token_create(TOKEN_SLASH, "/", lexer->line, start_column);
         case '%':
+            if (match(lexer, '=')) return token_create(TOKEN_PERCENT_ASSIGN, "%=", lexer->line, start_column);
             return token_create(TOKEN_PERCENT, "%", lexer->line, start_column);
         case '=':
             if (match(lexer, '=')) return token_create(TOKEN_EQ, "==", lexer->line, start_column);
@@ -314,17 +328,36 @@ Token* lexer_next_token(Lexer* lexer) {
             if (match(lexer, '=')) return token_create(TOKEN_NE, "!=", lexer->line, start_column);
             return token_create(TOKEN_NOT, "!", lexer->line, start_column);
         case '<':
+            if (match(lexer, '<')) {
+                if (match(lexer, '=')) return token_create(TOKEN_SHL_ASSIGN, "<<=", lexer->line, start_column);
+                return token_create(TOKEN_SHL, "<<", lexer->line, start_column);
+            }
             if (match(lexer, '=')) return token_create(TOKEN_LE, "<=", lexer->line, start_column);
             return token_create(TOKEN_LT, "<", lexer->line, start_column);
         case '>':
+            if (match(lexer, '>')) {
+                if (match(lexer, '=')) return token_create(TOKEN_SHR_ASSIGN, ">>=", lexer->line, start_column);
+                return token_create(TOKEN_SHR, ">>", lexer->line, start_column);
+            }
             if (match(lexer, '=')) return token_create(TOKEN_GE, ">=", lexer->line, start_column);
             return token_create(TOKEN_GT, ">", lexer->line, start_column);
         case '&':
             if (match(lexer, '&')) return token_create(TOKEN_AND, "&&", lexer->line, start_column);
+            if (match(lexer, '=')) return token_create(TOKEN_AND_ASSIGN, "&=", lexer->line, start_column);
             return token_create(TOKEN_AMPERSAND, "&", lexer->line, start_column);
         case '|':
             if (match(lexer, '|')) return token_create(TOKEN_OR, "||", lexer->line, start_column);
+            if (match(lexer, '=')) return token_create(TOKEN_OR_ASSIGN, "|=", lexer->line, start_column);
             return token_create(TOKEN_PIPE, "|", lexer->line, start_column);
+        case '^':
+            if (match(lexer, '=')) return token_create(TOKEN_XOR_ASSIGN, "^=", lexer->line, start_column);
+            return token_create(TOKEN_CARET, "^", lexer->line, start_column);
+        case '~':
+            return token_create(TOKEN_TILDE, "~", lexer->line, start_column);
+        case '?':
+            return token_create(TOKEN_QUESTION, "?", lexer->line, start_column);
+        case ':':
+            return token_create(TOKEN_COLON, ":", lexer->line, start_column);
         case '.':
             return token_create(TOKEN_DOT, ".", lexer->line, start_column);
         case '(':

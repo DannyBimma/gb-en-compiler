@@ -11,6 +11,9 @@ typedef enum {
     TOKEN_RETURN, TOKEN_BREAK, TOKEN_CONTINUE,
     TOKEN_STRUCT, TOKEN_UNION, TOKEN_TYPEDEF, TOKEN_SIZEOF,
     TOKEN_CONST, TOKEN_STATIC, TOKEN_EXTERN,
+    TOKEN_SWITCH, TOKEN_CASE, TOKEN_DEFAULT,
+    TOKEN_ENUM, TOKEN_GOTO,
+    TOKEN_SIGNED, TOKEN_UNSIGNED, TOKEN_LONG, TOKEN_SHORT,
 
     /* Identifiers and literals */
     TOKEN_IDENTIFIER,
@@ -40,6 +43,28 @@ typedef enum {
     TOKEN_DECREMENT,    /* -- */
     TOKEN_ARROW,        /* -> */
     TOKEN_DOT,          /* . */
+
+    /* Compound assignment operators */
+    TOKEN_PLUS_ASSIGN,  /* += */
+    TOKEN_MINUS_ASSIGN, /* -= */
+    TOKEN_STAR_ASSIGN,  /* *= */
+    TOKEN_SLASH_ASSIGN, /* /= */
+    TOKEN_PERCENT_ASSIGN, /* %= */
+    TOKEN_AND_ASSIGN,   /* &= */
+    TOKEN_OR_ASSIGN,    /* |= */
+    TOKEN_XOR_ASSIGN,   /* ^= */
+    TOKEN_SHL_ASSIGN,   /* <<= */
+    TOKEN_SHR_ASSIGN,   /* >>= */
+
+    /* Bitwise operators */
+    TOKEN_CARET,        /* ^ */
+    TOKEN_TILDE,        /* ~ */
+    TOKEN_SHL,          /* << */
+    TOKEN_SHR,          /* >> */
+
+    /* Ternary operator */
+    TOKEN_QUESTION,     /* ? */
+    TOKEN_COLON,        /* : */
 
     /* Punctuation */
     TOKEN_LPAREN,       /* ( */
