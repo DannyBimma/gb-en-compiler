@@ -143,7 +143,164 @@ ASTNode* ast_create_continue(void) {
     return ast_create_node(NODE_CONTINUE);
 }
 
+ASTNode* ast_create_do_while(ASTNode* body, ASTNode* condition) {
+    ASTNode* node = ast_create_node(NODE_DO_WHILE);
+    node->data.while_stmt.body = body;
+    node->data.while_stmt.condition = condition;
+    return node;
+}
+
+ASTNode* ast_create_struct_def(const char* name, int is_union) {
+    ASTNode* node = ast_create_node(NODE_STRUCT_DEF);
+    node->data.struct_def.name = name ? string_duplicate(name) : NULL;
+    node->data.struct_def.is_union = is_union;
+    node->data.struct_def.members = NULL;
+    node->data.struct_def.member_count = 0;
+    return node;
+}
+
+ASTNode* ast_create_member_access(ASTNode* object, const char* member, int is_arrow) {
+    ASTNode* node = ast_create_node(NODE_MEMBER_ACCESS);
+    node->data.member_access.object = object;
+    node->data.member_access.member = string_duplicate(member);
+    node->data.member_access.is_arrow = is_arrow;
+    return node;
+}
+
+ASTNode* ast_create_switch(ASTNode* expression) {
+    ASTNode* node = ast_create_node(NODE_SWITCH);
+    node->data.switch_stmt.expression = expression;
+    node->data.switch_stmt.cases = NULL;
+    node->data.switch_stmt.case_count = 0;
+    return node;
+}
+
+ASTNode* ast_create_case(ASTNode* value) {
+    ASTNode* node = ast_create_node(NODE_CASE);
+    node->data.case_stmt.value = value;
+    node->data.case_stmt.statements = NULL;
+    node->data.case_stmt.statement_count = 0;
+    return node;
+}
+
+ASTNode* ast_create_default(void) {
+    ASTNode* node = ast_create_node(NODE_DEFAULT);
+    node->data.case_stmt.value = NULL;
+    node->data.case_stmt.statements = NULL;
+    node->data.case_stmt.statement_count = 0;
+    return node;
+}
+
+ASTNode* ast_create_ternary(ASTNode* condition, ASTNode* then_expr, ASTNode* else_expr) {
+    ASTNode* node = ast_create_node(NODE_TERNARY);
+    node->data.ternary.condition = condition;
+    node->data.ternary.then_expr = then_expr;
+    node->data.ternary.else_expr = else_expr;
+    return node;
+}
+
+ASTNode* ast_create_enum_def(const char* name) {
+    ASTNode* node = ast_create_node(NODE_ENUM_DEF);
+    node->data.enum_def.name = name ? string_duplicate(name) : NULL;
+    node->data.enum_def.values = NULL;
+    node->data.enum_def.value_count = 0;
+    return node;
+}
+
+ASTNode* ast_create_sizeof_type(const char* type_name) {
+    ASTNode* node = ast_create_node(NODE_SIZEOF);
+    node->data.sizeof_expr.type_name = string_duplicate(type_name);
+    node->data.sizeof_expr.expression = NULL;
+    return node;
+}
+
+ASTNode* ast_create_sizeof_expr(ASTNode* expression) {
+    ASTNode* node = ast_create_node(NODE_SIZEOF);
+    node->data.sizeof_expr.type_name = NULL;
+    node->data.sizeof_expr.expression = expression;
+    return node;
+}
+
+ASTNode* ast_create_cast(const char* target_type, ASTNode* expression) {
+    ASTNode* node = ast_create_node(NODE_CAST);
+    node->data.cast.target_type = string_duplicate(target_type);
+    node->data.cast.expression = expression;
+    return node;
+}
+
+ASTNode* ast_create_compound_assign(const char* op, ASTNode* target, ASTNode* value) {
+    ASTNode* node = ast_create_node(NODE_COMPOUND_ASSIGN);
+    node->data.compound_assign.operator = string_duplicate(op);
+    node->data.compound_assign.target = target;
+    node->data.compound_assign.value = value;
+    return node;
+}
+
+ASTNode* ast_create_goto(const char* label) {
+    ASTNode* node = ast_create_node(NODE_GOTO);
+    node->data.goto_stmt.label = string_duplicate(label);
+    return node;
+}
+
+ASTNode* ast_create_label(const char* name, ASTNode* statement) {
+    ASTNode* node = ast_create_node(NODE_LABEL);
+    node->data.label_stmt.name = string_duplicate(name);
+    node->data.label_stmt.statement = statement;
+    return node;
+}
+
+ASTNode* ast_create_typedef(const char* original_type, const char* new_name) {
+    ASTNode* node = ast_create_node(NODE_TYPEDEF);
+    node->data.typedef_stmt.original_type = string_duplicate(original_type);
+    node->data.typedef_stmt.new_name = string_duplicate(new_name);
+    return node;
+}
+
 /* Helper functions */
+
+void ast_add_struct_member(ASTNode* struct_def, ASTNode* member) {
+    if (struct_def->type != NODE_STRUCT_DEF) return;
+    int new_count = struct_def->data.struct_def.member_count + 1;
+    struct_def->data.struct_def.members = (ASTNode**)safe_realloc(
+        struct_def->data.struct_def.members,
+        sizeof(ASTNode*) * new_count
+    );
+    struct_def->data.struct_def.members[new_count - 1] = member;
+    struct_def->data.struct_def.member_count = new_count;
+}
+
+void ast_add_case(ASTNode* switch_stmt, ASTNode* case_node) {
+    if (switch_stmt->type != NODE_SWITCH) return;
+    int new_count = switch_stmt->data.switch_stmt.case_count + 1;
+    switch_stmt->data.switch_stmt.cases = (ASTNode**)safe_realloc(
+        switch_stmt->data.switch_stmt.cases,
+        sizeof(ASTNode*) * new_count
+    );
+    switch_stmt->data.switch_stmt.cases[new_count - 1] = case_node;
+    switch_stmt->data.switch_stmt.case_count = new_count;
+}
+
+void ast_add_case_statement(ASTNode* case_node, ASTNode* statement) {
+    if (case_node->type != NODE_CASE && case_node->type != NODE_DEFAULT) return;
+    int new_count = case_node->data.case_stmt.statement_count + 1;
+    case_node->data.case_stmt.statements = (ASTNode**)safe_realloc(
+        case_node->data.case_stmt.statements,
+        sizeof(ASTNode*) * new_count
+    );
+    case_node->data.case_stmt.statements[new_count - 1] = statement;
+    case_node->data.case_stmt.statement_count = new_count;
+}
+
+void ast_add_enum_value(ASTNode* enum_def, const char* value) {
+    if (enum_def->type != NODE_ENUM_DEF) return;
+    int new_count = enum_def->data.enum_def.value_count + 1;
+    enum_def->data.enum_def.values = (char**)safe_realloc(
+        enum_def->data.enum_def.values,
+        sizeof(char*) * new_count
+    );
+    enum_def->data.enum_def.values[new_count - 1] = string_duplicate(value);
+    enum_def->data.enum_def.value_count = new_count;
+}
 
 void ast_add_function(ASTNode* program, ASTNode* function) {
     if (program->type != NODE_PROGRAM) return;
@@ -286,6 +443,80 @@ void ast_destroy(ASTNode* node) {
         case NODE_BREAK:
         case NODE_CONTINUE:
             /* No data to free */
+            break;
+
+        case NODE_STRUCT_DEF:
+            free(node->data.struct_def.name);
+            for (int i = 0; i < node->data.struct_def.member_count; i++) {
+                ast_destroy(node->data.struct_def.members[i]);
+            }
+            free(node->data.struct_def.members);
+            break;
+
+        case NODE_MEMBER_ACCESS:
+            ast_destroy(node->data.member_access.object);
+            free(node->data.member_access.member);
+            break;
+
+        case NODE_SWITCH:
+            ast_destroy(node->data.switch_stmt.expression);
+            for (int i = 0; i < node->data.switch_stmt.case_count; i++) {
+                ast_destroy(node->data.switch_stmt.cases[i]);
+            }
+            free(node->data.switch_stmt.cases);
+            break;
+
+        case NODE_CASE:
+        case NODE_DEFAULT:
+            ast_destroy(node->data.case_stmt.value);
+            for (int i = 0; i < node->data.case_stmt.statement_count; i++) {
+                ast_destroy(node->data.case_stmt.statements[i]);
+            }
+            free(node->data.case_stmt.statements);
+            break;
+
+        case NODE_TERNARY:
+            ast_destroy(node->data.ternary.condition);
+            ast_destroy(node->data.ternary.then_expr);
+            ast_destroy(node->data.ternary.else_expr);
+            break;
+
+        case NODE_ENUM_DEF:
+            free(node->data.enum_def.name);
+            for (int i = 0; i < node->data.enum_def.value_count; i++) {
+                free(node->data.enum_def.values[i]);
+            }
+            free(node->data.enum_def.values);
+            break;
+
+        case NODE_SIZEOF:
+            free(node->data.sizeof_expr.type_name);
+            ast_destroy(node->data.sizeof_expr.expression);
+            break;
+
+        case NODE_CAST:
+            free(node->data.cast.target_type);
+            ast_destroy(node->data.cast.expression);
+            break;
+
+        case NODE_COMPOUND_ASSIGN:
+            free(node->data.compound_assign.operator);
+            ast_destroy(node->data.compound_assign.target);
+            ast_destroy(node->data.compound_assign.value);
+            break;
+
+        case NODE_GOTO:
+            free(node->data.goto_stmt.label);
+            break;
+
+        case NODE_LABEL:
+            free(node->data.label_stmt.name);
+            ast_destroy(node->data.label_stmt.statement);
+            break;
+
+        case NODE_TYPEDEF:
+            free(node->data.typedef_stmt.original_type);
+            free(node->data.typedef_stmt.new_name);
             break;
 
         default:
